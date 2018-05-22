@@ -1,94 +1,40 @@
-# version que corre
-
 version: 2
 jobs:
-  build:
+  one:
     docker:
-      - image: circleci/openjdk:8-node-browsers
-    environment:
-      - ORACLE_HOME: $HOME/goldkiwi/vendor/instantclient_12_1 
-      - _JAVA_OPTIONS: -Djava.library.path=$HOME/sqlrelay/java/com/firstworks/sqlrelay
-      - LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$ORACLE_HOME/lib:$HOME/sqlrelay/lib:$HOME/sqlrelay/java/com/firstworks/sqlrelay:$HOME/sqlrelay/libexec/sqlrelay
-      - PATH: $PATH:$HOME/sqlrelay/bin
-    
+      - image: circleci/ruby:2.4.1
     steps:
-# #dependencies: why it works with no space in 1.0 and dosnt in 2.0
-# #how to put all dependencies with their respective pre, cache_directories, override, 
-      - run: #dependencies start line
-          name: dependencies, override
-          command: mvn install -DskipTests
+      - checkout
+      - run: echo "A first hello"
+      - run: mkdir -p my_workspace
+      - run: echo "Trying out workspaces" > my_workspace/echo-output
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory
+          root: my_workspace
+          # Must be relative path from root
+          paths:
+            - echo-output      
+  two:
+    docker:
+      - image: circleci/ruby:2.4.1
+    steps:
+      - checkout
+      - run: echo "A more familiar hi"  
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: my_workspace
 
-#         #cache directories (from dependencies)
-#       - save_cache:
-#            key: dependency-cache
-#            paths:
-#             - $ORACLE_HOME 
-#             - $HOME/sqlrelay
-
-#         #pre (from dependencies)
-#       - run: |
-#             - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 25
-#             - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.6 25
-#             -  if [[ ! -e $ORACLE_HOME ]]; then 
-#                   cd vendor &&  
-#                   wget -N  https://s3-us-west-1.amazonaws.com/sra-ops/rudiments-0.44.tar.gz  && 
-#                   wget -N  https://s3-us-west-1.amazonaws.com/sra-ops/instantclient-sdk-linux.x64-12.1.0.1.0.zip  && 
-#                   wget -N  https://s3-us-west-1.amazonaws.com/sra-ops/instantclient-basic-linux.x64-12.1.0.1.0.zip  && 
-#                   wget -N  https://s3-us-west-1.amazonaws.com/sra-ops/sqlrelay-0.53.tar.gz  && 
-#                   unzip instantclient-basic-linux.x64-12.1.0.1.0.zip && 
-#                   unzip instantclient-sdk-linux.x64-12.1.0.1.0.zip  
-#               ; fi
-#             -  if [[ ! -e $HOME/sqlrelay ]]; then 
-#                   cd vendor && 
-#                   tar zxvf rudiments-0.44.tar.gz && 
-#                   cd rudiments-0.44 && 
-#                   ./configure --prefix=$HOME/sqlrelay --exec-prefix=$HOME/sqlrelay && 
-#                   make && 
-#                   make install && 
-#                   cd ../ && 
-#                   tar zxvf sqlrelay-0.53.tar.gz && 
-#                   cd sqlrelay-0.53 && 
-#                   ./configure --prefix=$HOME/sqlrelay --exec-prefix=$HOME/sqlrelay --with-rudiments-prefix=$HOME/sqlrelay --with-oracle-instantclient-prefix=$ORACLE_HOME --with-oracle-home=$ORACLE_HOME --disable-python --disable-mysql --disable-postgresql --disable-sqlite --disable-sybase --disable-odbc --disable-db2 --disable-perl --disable-ruby --disable-php --disable-tcl --disable-erlang --enable-shared=yes && 
-#                   make && make install
-#               ; fi
-#       - run: 
-#           name: database
-#           command: cp vendor/conf/sqlrelay.conf $HOME/sqlrelay/etc/sqlrelay.conf
-#       - run: 
-#           name: checkout
-#           command: 
-#               - mkdir log && cd log && mkdir social_log4j 
-#               - cd social && cp src/main/resources/log4j.properties.test src/main/resources/log4j.properties 
-#               - mvn install:install-file -Dfile=$HOME/goldkiwi/analytics/src/main/webapp/WEB-INF/lib/ojdbc7.jar -DgroupId=com.oracle -DartifactId=ojdbc7  -Dversion=12.1.0.1 -Dpackaging=jar 
-      
-# ######################################################################################################################################################################################################
-
-#   test:
-#     docker:
-#       - image: circleci/openjdk:8-node-browsers
-#     steps:
-#       - checkout
-#       - run: cd $HOME/sqlrelay && ls
-#       - run: cd $HOME/sqlrelay/bin  && ./sqlr-stop SIGKILL && ./sqlr-start -id rovi -config $HOME/sqlrelay/etc/sqlrelay.conf && ./sqlr-start -id social -config $HOME/sqlrelay/etc/sqlrelay.conf && ./sqlr-start -id analytics -config $HOME/sqlrelay/etc/sqlrelay.conf #:
-#           # background: true
-#       - run: cd social && mvn test site && cp -r coverage-report $CIRCLE_ARTIFACTS/social && cp -r target/site $CIRCLE_ARTIFACTS/social
-#       - run: cd ingestor && mvn test site && cp -r  coverage-report $CIRCLE_ARTIFACTS/ingestor && cp -r target/site $CIRCLE_ARTIFACTS/ingestor
-#       - run: cp -r $HOME/sqlrelay/var/sqlrelay/debug $CIRCLE_ARTIFACTS 
-#       - run: cd analytics && mvn clean package site && cp -r coverage-report $CIRCLE_ARTIFACTS/analytics && cp -r target/site $CIRCLE_ARTIFACTS/analytics
-#       - run: cd common_lib && mvn test site && cp -r coverage-report $CIRCLE_ARTIFACTS/common && cp -r target/site $CIRCLE_ARTIFACTS/common
-
-# workflows:
-#   version: 2
-#   build_and_test:
-#     jobs:
-#       - build
-#       - test
-          # requires:
-          #   - build
-
-
-#database:
-#  post:
-
-#- cd command && another command && andother command:
-#        background: true
+      - run: |
+          if [[ $(cat my_workspace/echo-output) == "Trying out workspaces" ]]; then
+            echo "It worked!";
+          else
+            echo "Nope!"; exit 1
+          fi
+workflows:
+  version: 2
+  one_and_two:
+    jobs:
+      - one
+      - two:
+          requires:
+            - one
